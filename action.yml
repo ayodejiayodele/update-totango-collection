@@ -1,0 +1,46 @@
+# This action creates or updates Totango collection records. To make use of this action, you must have a Totango account and have configured a a collection in your Totango instance.
+# You will need the following information to use this action:
+# - The internal name of the collection to create/update e.g. 'leads'. This is the value of the 'collection-type' input and should not have spaces.
+# - The service ID of your Totango instance, usually in the format of '123456789'. To learn how to find your Totango service ID, visit https://support.totango.com/hc/en-us/articles/203036939-Where-can-I-find-my-Totango-Token#h_01FTE6NV9XXJNXKTEVZ6557CZD.
+# - The Totango API token. To learn how to find your Totango API key, visit https://support.totango.com/hc/en-us/articles/203036939-Where-can-I-find-my-Totango-Token#h_01FTE6M3BNN50ESP177HPNXRJ4.
+# - The path to the JSON payload to send to Totango. Read the readme for more information about the format of the payload.
+# For more information about Totango, see https://www.totango.com/
+name: 'Create/update Totango collection'
+description: 'Create or update Totango collection records'
+inputs:
+  collection-type:
+    description: 'The internal name of collection to create/update'
+    required: true
+  service-id:
+    description: 'The service ID of the Totango instance'
+    required: true
+  totango-int-hub-api-token:
+    description: 'The Totango token'
+    required: true
+  payload-path:
+    description: 'The path to the JSON payload to send to Totango'
+    required: true
+outputs:
+  totango-response:
+    description: 'The response from Totango'
+    value: ${{ steps.upload-collection.outputs.result }}
+
+env:
+  TOTANGO_INT_HUB_API_TOKEN: ${{ inputs.totango-int-hub-api-token }}
+  TOTANGO_SERVICE_ID: ${{ inputs.service-id }}
+  TOTANGO_ENDPOINT: 'https://int-hub.totango.com/api/v1/collections/${{ inputs.collection-type }}'
+
+runs:
+  using: 'composite'
+  steps:
+     - name: Upload collection to Totango
+        id: upload-collection
+        run: |
+          totangoEndpoint=${{ env.TOTANGO_ENDPOINT }}
+          totangoApiKey='${{ env.TOTANGO_INT_HUB_API_TOKEN }}'
+          totangoServiceId=${{ env.TOTANGO_SERVICE_ID }}
+          totangoPayload=$(cat ${{ inputs.payload-path }})
+          apiResponse=$(curl -X POST -H "Content-Type: application/json" -H "Authorization: app-token $totangoApiKey" -H "service_id: $totangoServiceId" -d "$totangoPayload" $totangoEndpoint)
+          echo $apiResponse
+          echo $apiResponse | jq -r '.status' | grep -q 'success'
+          echo "result=$apiResponse" >> $GITHUB_OUTPUT
